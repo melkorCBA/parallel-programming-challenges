@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/MatrixMultiplyChallenge/MatrixMultiplyChallenge.iml" filepath="$PROJECT_DIR$/MatrixMultiplyChallenge/MatrixMultiplyChallenge.iml" />
+      <module fileurl="file://$PROJECT_DIR$/MergeSortChallenge/MergeSortChallenge.iml" filepath="$PROJECT_DIR$/MergeSortChallenge/MergeSortChallenge.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/parallel-programming-challenges.iml" filepath="$PROJECT_DIR$/.idea/parallel-programming-challenges.iml" />
+    </modules>
+  </component>
+</project>

@@ -4,10 +4,7 @@
 
 import java.util.Arrays;
 import java.util.Random;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 /* sequential implementation of matrix multiplication */
 class SequentialMatrixMultiplier {
@@ -60,54 +57,58 @@ class ParallelMatrixMultiplier {
     }
 
     /* returns matrix product C = AB */
-    public int[][] computeProduct()  {
-        int [][] result = new int [numRowsA][numColsB];
-        int remaingColumnsToProcess = numColsB;
-        int taskRowSize = numRowsA;
-        int numberOfThreads = Runtime.getRuntime().availableProcessors();
-        int remaningThreads = numberOfThreads;
-        ExecutorService pool = Executors.newFixedThreadPool(numberOfThreads);
-        int i = -1;
-        while(remaingColumnsToProcess > 0){
-            int taskColumnLength = remaingColumnsToProcess/remaningThreads;
-            pool.submit(new ParallelWorker(0, taskRowSize, i+1, i+taskColumnLength, result));
-            remaingColumnsToProcess-=taskColumnLength;
-            remaningThreads--;
-            i+=taskColumnLength;
+    public int[][] computeProduct() {
+        // create thread pool
+        int numWorkers = Runtime.getRuntime().availableProcessors();
+        ExecutorService pool = Executors.newFixedThreadPool(numWorkers);
+
+        // submit tasks to calculate partial results
+        int chunkSize = (int) Math.ceil((double) numRowsA / numWorkers);
+        Future<int[][]>[] futures = new Future[numWorkers];
+        for (int w=0; w<numWorkers; w++) {
+            int start = Math.min(w * chunkSize, numRowsA);
+            int end = Math.min((w + 1) * chunkSize, numRowsA);
+            futures[w] = pool.submit(new ParallelWorker(start, end));
         }
 
+        // merge partial results
+        int[][] C = new int[numRowsA][numColsB];
+        try {
+            for (int w=0; w<numWorkers; w++) {
+                // retrieve value from future
+                int[][] partialC = futures[w].get();
+                for (int i=0; i<partialC.length; i++)
+                    for (int j=0; j<numColsB; j++)
+                        C[i + (w * chunkSize)][j] = partialC[i][j];
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
         pool.shutdown();
-        return result;
+        return C;
     }
-    class ParallelWorker implements Callable {
-        int rowStart, rowEnd, colStart, colEnd;
-        int [][] result;
 
-        public ParallelWorker(int rowStart, int rowEnd, int colStart, int colEnd, int[][] result){
-            this.rowStart = rowStart;
-            this.rowEnd = rowEnd;
-            this.colStart = colStart;
-            this.colEnd = colEnd;
-            this.result = result;
+    private class ParallelWorker implements Callable {
+
+        private int rowStartC, rowEndC;
+
+        public ParallelWorker(int rowStartC, int rowEndC) {
+            this.rowStartC = rowStartC;
+            this.rowEndC = rowEndC;
         }
 
-        @Override
-        public Object call() throws Exception {
-            for(int i=rowStart; i<=rowEnd; i++){
-                for(int j=colStart; j<=colEnd; j++){
-                    result[i][j]=calculatePostion(i,j);
+        public int[][] call() {
+            int[][] partialC = new int[rowEndC-rowStartC][numColsB];
+            for(int i=0; i<rowEndC-rowStartC; i++) {
+                for(int k=0; k<numColsB; k++) {
+                    int sum = 0;
+                    for(int j=0; j<numColsA; j++) {
+                        sum += A[i+rowStartC][j]*B[j][k];
+                    }
+                    partialC[i][k] = sum;
                 }
             }
-            return null;
-        }
-        private int calculatePostion(int row, int col){
-            int sum=0;
-            for(int i=0; i<numColsA; i++){
-                for(int j=0; j<numRowsB; j++){
-                    sum+=(A[row][i]*B[j][col]);
-                }
-            }
-            return sum;
+            return partialC;
         }
     }
 
@@ -132,8 +133,8 @@ public class MatrixMultiplyChallenge {
     /* evaluate performance of sequential and parallel implementations */
     public static void main(String args[]) {
         final int NUM_EVAL_RUNS = 5;
-        final int[][] A = generateRandomMatrix(2000,2000);
-        final int[][] B = generateRandomMatrix(2000,2000);
+        final int[][] A = generateRandomMatrix(1000,1000);
+        final int[][] B = generateRandomMatrix(1000,1000);
 
         System.out.println("Evaluating Sequential Implementation...");
         SequentialMatrixMultiplier smm = new SequentialMatrixMultiplier(A,B);
