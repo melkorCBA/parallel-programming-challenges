@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RecursiveTask;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Supplier;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
@@ -75,23 +76,13 @@ class ParallelImageDownloader {
 
     /* returns total bytes from downloading all images in imageNumbers array */
     public int downloadAll() {
-        int numberOfWorkers =Runtime.getRuntime().availableProcessors();
-        ExecutorService pool = Executors.newFixedThreadPool(numberOfWorkers);
-        
-        List<CompletableFuture<Integer>> imageDowloadRequests = new ArrayList<>(); 
+        List<Image> images  = new ArrayList<>();
+        LongAdder total = new LongAdder();
         for (int num : imageNumbers) {
-            CompletableFuture<Integer>  imageDowloadRequest = CompletableFuture.supplyAsync(new Image(num),pool);
-            imageDowloadRequests.add(imageDowloadRequest);
+            images.add(new Image(num));
         }
-
-        CompletableFuture result=  CompletableFuture.allOf( imageDowloadRequests.toArray(
-            new CompletableFuture[imageDowloadRequests.size()]
-        )).thenApplyAsync(v-> {
-            pool.shutdown();
-            return v;
-        });
-        
-
+        images.stream().unordered().parallel().map(i -> i.get()).forEach(b -> total.add(b));
+        this.totalBytes = (int) total.sum();
         return this.totalBytes;
     }
 
@@ -122,9 +113,7 @@ class ParallelImageDownloader {
         }
         @Override
         public Integer get() {
-            int size= downloadImage(this.imageNumber);
-            totalBytes +=size;
-            return totalBytes;
+            return downloadImage(this.imageNumber);
             
         }
 
