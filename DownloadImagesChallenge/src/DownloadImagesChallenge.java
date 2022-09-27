@@ -7,16 +7,8 @@ import java.io.*;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Supplier;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 
 /* sequential implementation of multiple image downloader */
@@ -59,24 +51,24 @@ class ParallelImageDownloader {
 
     private int[] imageNumbers;
     private int totalBytes = 0;
+
     public ParallelImageDownloader(int[] imageNumbers) {
         this.imageNumbers = imageNumbers;
     }
 
-    private void incrementTotalBytes(Object bytes){
-        try{
-         
-            this.totalBytes += (int)bytes;
-        }
-        catch(ClassCastException e){
+    private void incrementTotalBytes(Object bytes) {
+        try {
+
+            this.totalBytes += (int) bytes;
+        } catch (ClassCastException e) {
             e.printStackTrace();
         }
-        
+
     }
 
     /* returns total bytes from downloading all images in imageNumbers array */
     public int downloadAll() {
-        List<Image> images  = new ArrayList<>();
+        List<Image> images = new ArrayList<>();
         LongAdder total = new LongAdder();
         for (int num : imageNumbers) {
             images.add(new Image(num));
@@ -103,18 +95,17 @@ class ParallelImageDownloader {
         return 0;
     }
 
-
-
     class Image implements Supplier<Integer> {
         int imageNumber;
 
         public Image(int imageNumber) {
             this.imageNumber = imageNumber;
         }
+
         @Override
         public Integer get() {
             return downloadImage(this.imageNumber);
-            
+
         }
 
     }
@@ -150,8 +141,8 @@ public class DownloadImagesChallenge {
         parallelTime /= NUM_EVAL_RUNS;
 
         // display sequential and parallel results for comparison
-        // if (sequentialResult != parallelResult)
-        //     throw new Error("ERROR: sequentialResult and parallelResult do not match!");
+        if (sequentialResult != parallelResult)
+            throw new Error("ERROR: sequentialResult and parallelResult do not match!");
         System.out.format("Downloaded %d images totaling %.1f MB\n", IMAGE_NUMS.length, parallelResult / 1e6);
         System.out.format("Average Sequential Time: %.1f ms\n", sequentialTime);
         System.out.format("Average Parallel Time: %.1f ms\n", parallelTime);
